@@ -23,10 +23,10 @@
 <body class="text-slate-800 font-sans pb-20">
 
     <!-- Loading Screen -->
-    <div id="loading-screen" class="fixed inset-0 bg-slate-50 flex items-center justify-center z-50">
+    <div id="loading-screen" class="fixed inset-0 bg-slate-50 flex items-center justify-center z-50 transition-opacity duration-300">
         <div class="flex flex-col items-center gap-4">
             <i data-lucide="loader-2" class="w-10 h-10 text-blue-600 animate-spin"></i>
-            <p class="text-slate-500 font-medium">正在載入班級資料...</p>
+            <p id="loading-text" class="text-slate-500 font-medium">正在載入班級資料...</p>
         </div>
     </div>
 
@@ -147,9 +147,9 @@
 
     <!-- Firebase SDKs -->
     <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js';
-        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js';
-        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js';
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
+        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
+        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
 
         // --- Global App Object for event handlers ---
         window.app = {
@@ -175,6 +175,7 @@
         // --- DOM Elements ---
         const els = {
             loadingScreen: document.getElementById('loading-screen'),
+            loadingText: document.getElementById('loading-text'),
             datePicker: document.getElementById('date-picker'),
             statsContainer: document.getElementById('stats-container'),
             studentList: document.getElementById('student-list-container'),
@@ -202,6 +203,8 @@
                 }
             } catch (error) {
                 console.error("Auth error:", error);
+                els.loadingScreen.classList.add('hidden'); // Force hide if auth fails
+                alert("登入失敗，請重新整理網頁");
             }
 
             onAuthStateChanged(auth, (user) => {
@@ -209,7 +212,9 @@
                 if (user) {
                     setupDataListeners(user);
                 } else {
-                    // Handle logged out state if needed
+                    // If for some reason user is null (unlikely after successful await)
+                    console.warn("User not logged in");
+                    els.loadingScreen.classList.add('hidden');
                 }
             });
 
@@ -241,6 +246,13 @@
                 render();
                 // Hide loading screen once initial data is loaded (or even if empty)
                 els.loadingScreen.classList.add('hidden');
+            }, (error) => {
+                // Error Handler
+                console.error("Error fetching students:", error);
+                els.loadingText.textContent = "載入失敗";
+                setTimeout(() => {
+                    els.loadingScreen.classList.add('hidden');
+                }, 500);
             });
 
             // Attendance Listener
@@ -260,6 +272,8 @@
                     state.attendance = {};
                 }
                 render();
+            }, (error) => {
+                console.error("Error fetching attendance:", error);
             });
         }
 
