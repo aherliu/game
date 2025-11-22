@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>班級點名系統</title>
+    <title>班級點名系統 (本機版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
@@ -14,19 +14,6 @@
 </head>
 <body class="text-slate-800 font-sans pb-20">
 
-    <!-- Loading Screen -->
-    <div id="loading-screen" class="fixed inset-0 bg-slate-50 flex items-center justify-center z-50 transition-opacity duration-300">
-        <div class="flex flex-col items-center gap-4 px-4 text-center">
-            <i data-lucide="loader-2" class="w-10 h-10 text-blue-600 animate-spin" id="loading-icon"></i>
-            <div id="loading-content">
-                <p id="loading-text" class="text-slate-500 font-medium">正在載入班級資料...</p>
-                <p id="error-help" class="text-red-500 text-sm mt-2 hidden">
-                    無法讀取 Firebase 設定。<br>請編輯 HTML 檔案，填入您的 firebaseConfig。
-                </p>
-            </div>
-        </div>
-    </div>
-
     <!-- Header Section -->
     <header class="bg-white shadow-sm sticky top-0 z-10 border-b border-slate-200">
         <div class="max-w-4xl mx-auto px-4 py-4">
@@ -34,9 +21,9 @@
                 <div>
                     <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
                         <i data-lucide="clipboard-list" class="w-7 h-7 text-blue-600"></i>
-                        班級點名系統
+                        班級點名系統 <span class="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full ml-2">本機版</span>
                     </h1>
-                    <p class="text-slate-500 text-sm mt-1">輕鬆管理學生出席狀況</p>
+                    <p class="text-slate-500 text-sm mt-1">資料儲存於瀏覽器，無需網路即可使用</p>
                 </div>
                 
                 <div class="flex items-center gap-3 bg-slate-100 p-1.5 rounded-lg">
@@ -91,6 +78,11 @@
                     <i data-lucide="list-plus" class="w-4 h-4"></i> <span class="hidden md:inline">快速加入 1-30 號</span><span class="md:hidden">1-30號</span>
                 </button>
             </div>
+            <!-- Backup/Restore Help -->
+            <div class="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-400 flex justify-between items-center">
+                <span>提示：若清除瀏覽器快取，資料可能會消失。</span>
+                <button onclick="app.clearAllData()" class="text-red-400 hover:text-red-600 hover:underline">清除所有資料</button>
+            </div>
         </div>
 
         <!-- Student List -->
@@ -103,44 +95,49 @@
         </div>
     </main>
 
-    <!-- Firebase SDKs -->
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
-        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
-        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
+    <script>
+        // ==========================================
+        //  Local Storage Manager
+        // ==========================================
+        const STORAGE_KEY_STUDENTS = 'roll_call_students_v1';
+        const STORAGE_PREFIX_ATTENDANCE = 'roll_call_attendance_';
 
-        // ==========================================
-        //  設定區域 (Configuration Area)
-        // ==========================================
-        
-        // 1. 在此處定義您的 Firebase 設定
-        // 如果您在 GitHub Pages 上運行，請將下方的 'YOUR_...' 替換為您的實際設定
-        // 如果是在此預覽視窗運行，系統會自動使用內建設定
-        
-        let firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_PROJECT_ID.firebasestorage.app",
-            messagingSenderId: "YOUR_SENDER_ID",
-            appId: "YOUR_APP_ID"
+        const storage = {
+            getStudents: () => {
+                const data = localStorage.getItem(STORAGE_KEY_STUDENTS);
+                return data ? JSON.parse(data) : [];
+            },
+            saveStudents: (students) => {
+                localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(students));
+            },
+            getAttendance: (date) => {
+                const data = localStorage.getItem(STORAGE_PREFIX_ATTENDANCE + date);
+                return data ? JSON.parse(data) : {};
+            },
+            saveAttendance: (date, data) => {
+                localStorage.setItem(STORAGE_PREFIX_ATTENDANCE + date, JSON.stringify(data));
+            },
+            clearDate: (date) => {
+                localStorage.removeItem(STORAGE_PREFIX_ATTENDANCE + date);
+            },
+            clearAll: () => {
+                localStorage.removeItem(STORAGE_KEY_STUDENTS);
+                // Clear all attendance records
+                Object.keys(localStorage).forEach(key => {
+                    if (key.startsWith(STORAGE_PREFIX_ATTENDANCE)) {
+                        localStorage.removeItem(key);
+                    }
+                });
+            }
         };
 
-        // 自動檢測：如果在預覽環境，使用預覽變數
-        if (typeof __firebase_config !== 'undefined') {
-            try {
-                firebaseConfig = JSON.parse(__firebase_config);
-            } catch(e) { console.error("Config parse error"); }
-        }
-
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'class-roll-call-app';
-
+        // ==========================================
+        //  App Logic
         // ==========================================
 
-        window.app = { handleBulkStatus: null };
+        window.app = { handleBulkStatus: null, updateStatus: null, deleteStudent: null, clearAllData: null };
 
         let state = {
-            user: null,
             students: [],
             attendance: {},
             date: new Date().toISOString().split('T')[0],
@@ -148,10 +145,6 @@
         };
 
         const els = {
-            loadingScreen: document.getElementById('loading-screen'),
-            loadingText: document.getElementById('loading-text'),
-            loadingIcon: document.getElementById('loading-icon'),
-            errorHelp: document.getElementById('error-help'),
             datePicker: document.getElementById('date-picker'),
             statsContainer: document.getElementById('stats-container'),
             studentList: document.getElementById('student-list-container'),
@@ -166,94 +159,34 @@
             formAdd: document.getElementById('form-add-student')
         };
 
-        async function init() {
+        function init() {
             els.datePicker.value = state.date;
             lucide.createIcons();
 
-            // 檢查是否已設定 Config
-            if (firebaseConfig.apiKey === "YOUR_API_KEY") {
-                els.loadingIcon.classList.add('hidden');
-                els.loadingText.textContent = "設定錯誤";
-                els.loadingText.classList.add('text-red-600');
-                els.errorHelp.classList.remove('hidden');
-                // 在預覽環境通常不會執行到這裡，因為上面的 typeof check 會通過
-                return;
-            }
-
-            try {
-                const firebaseApp = initializeApp(firebaseConfig);
-                const auth = getAuth(firebaseApp);
-                const db = getFirestore(firebaseApp);
-                
-                // Expose for helpers
-                state.db = db;
-                state.auth = auth;
-
-                // Auth Logic
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-
-                onAuthStateChanged(auth, (user) => {
-                    state.user = user;
-                    if (user) {
-                        setupDataListeners(user, db);
-                    } else {
-                        console.warn("User not logged in");
-                        els.loadingScreen.classList.add('hidden');
-                    }
-                });
-            } catch (error) {
-                console.error("Init Error:", error);
-                els.loadingIcon.classList.add('hidden');
-                els.loadingText.textContent = "初始化失敗 (請檢查 Console)";
-                els.errorHelp.innerHTML = `錯誤訊息: ${error.message}<br>請確認您已設定 Firebase Config 且網域已加入白名單。`;
-                els.errorHelp.classList.remove('hidden');
-            }
-
+            // Load initial data
+            loadData();
             setupEventListeners();
         }
 
-        function setupDataListeners(user, db) {
-            const studentsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'students');
-            onSnapshot(studentsRef, (snapshot) => {
-                const loadedStudents = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
-
-                loadedStudents.sort((a, b) => {
-                    const numA = parseInt(a.name.replace(/\D/g, '')) || 0;
-                    const numB = parseInt(b.name.replace(/\D/g, '')) || 0;
-                    if (numA > 0 && numB > 0 && numA !== numB) return numA - numB;
-                    return (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0);
-                });
-
-                state.students = loadedStudents;
-                render();
-                els.loadingScreen.classList.add('hidden');
-            }, (error) => {
-                console.error("Data Error:", error);
-                // 可能是權限不足或其他問題，隱藏 loading 避免卡死
-                els.loadingScreen.classList.add('hidden');
-                alert("讀取資料失敗，請確認網路連線");
+        function loadData() {
+            // Load Students
+            state.students = storage.getStudents();
+            // Sort students
+            state.students.sort((a, b) => {
+                const numA = parseInt(a.name.replace(/\D/g, '')) || 0;
+                const numB = parseInt(b.name.replace(/\D/g, '')) || 0;
+                if (numA > 0 && numB > 0 && numA !== numB) return numA - numB;
+                return a.createdAt - b.createdAt;
             });
 
-            subscribeToAttendanceDate(state.date);
+            // Load Attendance
+            loadAttendanceForDate(state.date);
+            
+            render();
         }
 
-        let unsubscribeAttendance = null;
-        function subscribeToAttendanceDate(dateStr) {
-            if (unsubscribeAttendance) unsubscribeAttendance();
-            if (!state.user || !state.db) return;
-
-            const dateDocRef = doc(state.db, 'artifacts', appId, 'users', state.user.uid, 'daily_attendance', dateStr);
-            unsubscribeAttendance = onSnapshot(dateDocRef, (docSnap) => {
-                state.attendance = docSnap.exists() ? docSnap.data().records || {} : {};
-                render();
-            });
+        function loadAttendanceForDate(date) {
+            state.attendance = storage.getAttendance(date);
         }
 
         function render() {
@@ -359,84 +292,115 @@
             return `<button onclick="app.updateStatus('${id}', '${status}')" class="flex flex-col sm:flex-row items-center gap-1.5 px-3 py-2 rounded-lg border transition-all duration-200 flex-1 sm:flex-none justify-center min-w-[70px] sm:min-w-[auto] ${classes}"><i data-lucide="${iconName}" class="w-5 h-5 ${isActive ? 'text-white' : ''}"></i><span class="text-xs sm:text-sm font-medium">${label}</span></button>`;
         }
 
-        async function saveAttendance(newData) {
-            if (!state.user) return;
-            const dateDocRef = doc(state.db, 'artifacts', appId, 'users', state.user.uid, 'daily_attendance', state.date);
-            try {
-                await setDoc(dateDocRef, {
-                    date: state.date,
-                    records: newData,
-                    lastUpdated: serverTimestamp()
-                }, { merge: true });
-            } catch (e) { console.error("Save failed", e); }
-        }
+        // --- Actions ---
 
-        window.app.updateStatus = async (studentId, status) => {
-            const newData = { ...state.attendance, [studentId]: status };
-            await saveAttendance(newData);
+        window.app.updateStatus = (studentId, status) => {
+            state.attendance[studentId] = status;
+            storage.saveAttendance(state.date, state.attendance);
+            render();
         };
 
-        window.app.deleteStudent = async (studentId) => {
+        window.app.deleteStudent = (studentId) => {
              if (!confirm('確定要刪除這位學生嗎？這也會影響歷史紀錄。')) return;
-             try {
-                 await deleteDoc(doc(state.db, 'artifacts', appId, 'users', state.user.uid, 'students', studentId));
-                 const newData = { ...state.attendance };
-                 delete newData[studentId];
-                 await saveAttendance(newData);
-             } catch (e) { console.error("Delete failed", e); }
+             
+             // Remove from list
+             state.students = state.students.filter(s => s.id !== studentId);
+             storage.saveStudents(state.students);
+             
+             // Remove from today's attendance (optional, but cleaner)
+             if (state.attendance[studentId]) {
+                 delete state.attendance[studentId];
+                 storage.saveAttendance(state.date, state.attendance);
+             }
+             
+             render();
         };
 
-        window.app.handleBulkStatus = async (status) => {
-            if (!state.user || state.students.length === 0) return;
-            const newData = { ...state.attendance };
-            state.students.forEach(s => newData[s.id] = status);
-            await saveAttendance(newData);
+        window.app.handleBulkStatus = (status) => {
+            if (state.students.length === 0) return;
+            state.students.forEach(s => state.attendance[s.id] = status);
+            storage.saveAttendance(state.date, state.attendance);
+            render();
+        };
+
+        window.app.clearAllData = () => {
+            if (!confirm('警告：此操作將刪除「本瀏覽器」內儲存的所有學生名單與點名紀錄，且無法復原。\n\n確定要清除嗎？')) return;
+            storage.clearAll();
+            location.reload();
         };
 
         function setupEventListeners() {
+            // Date Picker
             els.datePicker.addEventListener('change', (e) => {
                 state.date = e.target.value;
-                subscribeToAttendanceDate(state.date);
+                loadAttendanceForDate(state.date);
+                render();
             });
+
+            // Input Validation
             els.inputName.addEventListener('input', (e) => els.btnAdd.disabled = !e.target.value.trim());
             
-            els.formAdd.addEventListener('submit', async (e) => {
+            // Add Student
+            els.formAdd.addEventListener('submit', (e) => {
                 e.preventDefault();
                 const name = els.inputName.value.trim();
-                if (!name || !state.user) return;
+                if (!name) return;
+
+                const newStudent = {
+                    id: Date.now().toString() + Math.random().toString(36).substr(2, 5), // Simple ID
+                    name: name,
+                    createdAt: Date.now()
+                };
+
+                state.students.push(newStudent);
+                // Re-sort
+                state.students.sort((a, b) => {
+                    const numA = parseInt(a.name.replace(/\D/g, '')) || 0;
+                    const numB = parseInt(b.name.replace(/\D/g, '')) || 0;
+                    if (numA > 0 && numB > 0 && numA !== numB) return numA - numB;
+                    return a.createdAt - b.createdAt;
+                });
+
+                storage.saveStudents(state.students);
+                
                 els.inputName.value = '';
                 els.btnAdd.disabled = true;
-                try {
-                    const newDocRef = doc(collection(state.db, 'artifacts', appId, 'users', state.user.uid, 'students'));
-                    await setDoc(newDocRef, { name: name, createdAt: serverTimestamp() });
-                } catch (err) { els.inputName.value = name; }
+                render();
             });
 
-            els.btnBatchAdd.addEventListener('click', async () => {
-                 if (!state.user) return;
+            // Batch Add 1-30
+            els.btnBatchAdd.addEventListener('click', () => {
                  if (state.students.length > 0 && !confirm('目前已有學生名單，確定要額外加入 1號 到 30號 學生嗎？')) return;
+                 
                  state.isAddingBatch = true;
                  updateUIState();
-                 try {
-                     const promises = [];
-                     for (let i = 1; i <= 30; i++) {
-                        const newDocRef = doc(collection(state.db, 'artifacts', appId, 'users', state.user.uid, 'students'));
-                        promises.push(setDoc(newDocRef, { name: `${i}號學生`, createdAt: serverTimestamp() }));
+
+                 // Use setTimeout to allow UI to show loading spinner briefly
+                 setTimeout(() => {
+                    const newStudents = [];
+                    for (let i = 1; i <= 30; i++) {
+                        newStudents.push({
+                            id: Date.now().toString() + '-' + i,
+                            name: `${i}號學生`,
+                            createdAt: Date.now() + i // slight offset to keep order
+                        });
                     }
-                    await Promise.all(promises);
-                 } catch (err) { alert("新增失敗"); } finally { state.isAddingBatch = false; updateUIState(); }
+                    state.students = [...state.students, ...newStudents];
+                    storage.saveStudents(state.students);
+                    
+                    state.isAddingBatch = false;
+                    loadData(); // Re-sort and render
+                 }, 500);
             });
 
-            els.btnReset.addEventListener('click', async () => {
+            // Reset Today
+            els.btnReset.addEventListener('click', () => {
                 state.attendance = {};
+                storage.clearDate(state.date);
                 render();
-                if (!state.user) return;
-                try {
-                    const dateDocRef = doc(state.db, 'artifacts', appId, 'users', state.user.uid, 'daily_attendance', state.date);
-                    await deleteDoc(dateDocRef);
-                } catch(e) { console.error(e); }
             });
 
+            // Copy Report
             els.btnCopy.addEventListener('click', () => {
                 const stats = { present: 0, absent: 0, late: 0, excused: 0, totalMarked: 0 };
                 Object.values(state.attendance).forEach(status => {
@@ -464,7 +428,9 @@
             document.body.removeChild(textArea);
         }
 
+        // Start App
         init();
+
     </script>
 </body>
 </html>
