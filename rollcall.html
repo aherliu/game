@@ -7,26 +7,23 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        /* 隱藏捲軸但保留功能 */
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .no-scrollbar {
-            -ms-overflow-style: none;  /* IE and Edge */
-            scrollbar-width: none;  /* Firefox */
-        }
-        body {
-            background-color: #f8fafc; /* slate-50 */
-        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        body { background-color: #f8fafc; }
     </style>
 </head>
 <body class="text-slate-800 font-sans pb-20">
 
     <!-- Loading Screen -->
     <div id="loading-screen" class="fixed inset-0 bg-slate-50 flex items-center justify-center z-50 transition-opacity duration-300">
-        <div class="flex flex-col items-center gap-4">
-            <i data-lucide="loader-2" class="w-10 h-10 text-blue-600 animate-spin"></i>
-            <p id="loading-text" class="text-slate-500 font-medium">正在載入班級資料...</p>
+        <div class="flex flex-col items-center gap-4 px-4 text-center">
+            <i data-lucide="loader-2" class="w-10 h-10 text-blue-600 animate-spin" id="loading-icon"></i>
+            <div id="loading-content">
+                <p id="loading-text" class="text-slate-500 font-medium">正在載入班級資料...</p>
+                <p id="error-help" class="text-red-500 text-sm mt-2 hidden">
+                    無法讀取 Firebase 設定。<br>請編輯 HTML 檔案，填入您的 firebaseConfig。
+                </p>
+            </div>
         </div>
     </div>
 
@@ -47,11 +44,7 @@
                     <input type="date" id="date-picker" class="bg-transparent border-none text-slate-700 font-medium focus:ring-0 p-1 outline-none">
                 </div>
             </div>
-
-            <!-- Stats Bar -->
-            <div id="stats-container" class="grid grid-cols-2 md:grid-cols-5 gap-2 mt-6 hidden">
-                <!-- Will be populated by JS -->
-            </div>
+            <div id="stats-container" class="grid grid-cols-2 md:grid-cols-5 gap-2 mt-6 hidden"></div>
         </div>
     </header>
 
@@ -61,15 +54,12 @@
         <div class="flex flex-wrap gap-3 justify-between items-center bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
             <div class="flex flex-wrap gap-2 w-full md:w-auto">
                  <button id="btn-copy" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm transition-colors text-sm font-medium">
-                    <i data-lucide="copy" class="w-4 h-4"></i>
-                    複製報告
+                    <i data-lucide="copy" class="w-4 h-4"></i> 複製報告
                 </button>
                 <button id="btn-reset" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-slate-50 border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg shadow-sm transition-colors text-sm font-medium">
-                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
-                    重置今日
+                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i> 重置今日
                 </button>
             </div>
-            
             <div class="w-full md:w-auto text-center md:text-right text-sm font-medium text-slate-500 mt-2 md:mt-0">
                 出席率: <span id="attendance-rate" class="text-orange-500">0%</span>
             </div>
@@ -77,18 +67,10 @@
 
         <!-- Bulk Actions -->
         <div id="bulk-actions" class="grid grid-cols-2 md:grid-cols-4 gap-2 hidden">
-            <button onclick="app.handleBulkStatus('present')" class="flex items-center justify-center gap-2 px-3 py-2 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 rounded-lg text-sm font-medium transition-colors">
-                <i data-lucide="check-circle" class="w-4 h-4"></i> 全選出席
-            </button>
-            <button onclick="app.handleBulkStatus('absent')" class="flex items-center justify-center gap-2 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-sm font-medium transition-colors">
-                <i data-lucide="x-circle" class="w-4 h-4"></i> 全選缺席
-            </button>
-            <button onclick="app.handleBulkStatus('late')" class="flex items-center justify-center gap-2 px-3 py-2 bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 rounded-lg text-sm font-medium transition-colors">
-                <i data-lucide="clock" class="w-4 h-4"></i> 全選遲到
-            </button>
-            <button onclick="app.handleBulkStatus('excused')" class="flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 rounded-lg text-sm font-medium transition-colors">
-                <i data-lucide="minus-circle" class="w-4 h-4"></i> 全選請假
-            </button>
+            <button onclick="app.handleBulkStatus('present')" class="flex items-center justify-center gap-2 px-3 py-2 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 rounded-lg text-sm font-medium transition-colors"><i data-lucide="check-circle" class="w-4 h-4"></i> 全選出席</button>
+            <button onclick="app.handleBulkStatus('absent')" class="flex items-center justify-center gap-2 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-sm font-medium transition-colors"><i data-lucide="x-circle" class="w-4 h-4"></i> 全選缺席</button>
+            <button onclick="app.handleBulkStatus('late')" class="flex items-center justify-center gap-2 px-3 py-2 bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 rounded-lg text-sm font-medium transition-colors"><i data-lucide="clock" class="w-4 h-4"></i> 全選遲到</button>
+            <button onclick="app.handleBulkStatus('excused')" class="flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 rounded-lg text-sm font-medium transition-colors"><i data-lucide="minus-circle" class="w-4 h-4"></i> 全選請假</button>
         </div>
 
         <!-- Add Student Form -->
@@ -99,50 +81,26 @@
                         <div class="absolute left-3 top-1/2 -translate-y-1/2">
                             <i data-lucide="users" class="w-5 h-5 text-slate-400"></i>
                         </div>
-                        <input
-                            type="text"
-                            id="input-student-name"
-                            placeholder="輸入學生姓名新增..."
-                            class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                        />
+                        <input type="text" id="input-student-name" placeholder="輸入學生姓名新增..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
                     </div>
-                    <button 
-                        type="submit" 
-                        id="btn-add"
-                        disabled
-                        class="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 font-medium whitespace-nowrap"
-                    >
-                        <i data-lucide="user-plus" class="w-4 h-4"></i>
-                        <span class="hidden sm:inline">新增</span>
+                    <button type="submit" id="btn-add" disabled class="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 font-medium whitespace-nowrap">
+                        <i data-lucide="user-plus" class="w-4 h-4"></i> <span class="hidden sm:inline">新增</span>
                     </button>
                 </form>
-
-                <!-- Quick Add 1-30 -->
-                <button 
-                    id="btn-batch-add"
-                    class="px-4 py-2 bg-slate-100 text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-200 transition-colors flex items-center justify-center gap-2 font-medium whitespace-nowrap disabled:opacity-50"
-                    title="快速建立 1-30 號學生"
-                >
-                    <i data-lucide="list-plus" class="w-4 h-4"></i>
-                    <span class="hidden md:inline">快速加入 1-30 號</span>
-                    <span class="md:hidden">1-30號</span>
+                <button id="btn-batch-add" class="px-4 py-2 bg-slate-100 text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-200 transition-colors flex items-center justify-center gap-2 font-medium whitespace-nowrap disabled:opacity-50" title="快速建立 1-30 號學生">
+                    <i data-lucide="list-plus" class="w-4 h-4"></i> <span class="hidden md:inline">快速加入 1-30 號</span><span class="md:hidden">1-30號</span>
                 </button>
             </div>
         </div>
 
         <!-- Student List -->
         <div id="student-list-container" class="space-y-3">
-            <!-- Empty State -->
             <div id="empty-state" class="text-center py-12 bg-white rounded-xl border border-dashed border-slate-300 hidden">
-                <div class="flex justify-center mb-3">
-                    <i data-lucide="users" class="w-12 h-12 text-slate-300"></i>
-                </div>
+                <div class="flex justify-center mb-3"><i data-lucide="users" class="w-12 h-12 text-slate-300"></i></div>
                 <p class="text-slate-500">尚未建立學生名單</p>
                 <p class="text-slate-400 text-sm mt-1">請在上方輸入姓名或點擊「1-30號」快速建立</p>
             </div>
-            <!-- List Items will be injected here -->
         </div>
-
     </main>
 
     <!-- Firebase SDKs -->
@@ -151,19 +109,36 @@
         import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
         import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
 
-        // --- Global App Object for event handlers ---
-        window.app = {
-            handleBulkStatus: null, // Will be assigned later
+        // ==========================================
+        //  設定區域 (Configuration Area)
+        // ==========================================
+        
+        // 1. 在此處定義您的 Firebase 設定
+        // 如果您在 GitHub Pages 上運行，請將下方的 'YOUR_...' 替換為您的實際設定
+        // 如果是在此預覽視窗運行，系統會自動使用內建設定
+        
+        let firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.firebasestorage.app",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
         };
 
-        // --- Firebase Init ---
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const firebaseApp = initializeApp(firebaseConfig);
-        const auth = getAuth(firebaseApp);
-        const db = getFirestore(firebaseApp);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        // 自動檢測：如果在預覽環境，使用預覽變數
+        if (typeof __firebase_config !== 'undefined') {
+            try {
+                firebaseConfig = JSON.parse(__firebase_config);
+            } catch(e) { console.error("Config parse error"); }
+        }
 
-        // --- State ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'class-roll-call-app';
+
+        // ==========================================
+
+        window.app = { handleBulkStatus: null };
+
         let state = {
             user: null,
             students: [],
@@ -172,10 +147,11 @@
             isAddingBatch: false
         };
 
-        // --- DOM Elements ---
         const els = {
             loadingScreen: document.getElementById('loading-screen'),
             loadingText: document.getElementById('loading-text'),
+            loadingIcon: document.getElementById('loading-icon'),
+            errorHelp: document.getElementById('error-help'),
             datePicker: document.getElementById('date-picker'),
             statsContainer: document.getElementById('stats-container'),
             studentList: document.getElementById('student-list-container'),
@@ -190,40 +166,57 @@
             formAdd: document.getElementById('form-add-student')
         };
 
-        // --- Initialization ---
         async function init() {
             els.datePicker.value = state.date;
             lucide.createIcons();
 
+            // 檢查是否已設定 Config
+            if (firebaseConfig.apiKey === "YOUR_API_KEY") {
+                els.loadingIcon.classList.add('hidden');
+                els.loadingText.textContent = "設定錯誤";
+                els.loadingText.classList.add('text-red-600');
+                els.errorHelp.classList.remove('hidden');
+                // 在預覽環境通常不會執行到這裡，因為上面的 typeof check 會通過
+                return;
+            }
+
             try {
+                const firebaseApp = initializeApp(firebaseConfig);
+                const auth = getAuth(firebaseApp);
+                const db = getFirestore(firebaseApp);
+                
+                // Expose for helpers
+                state.db = db;
+                state.auth = auth;
+
+                // Auth Logic
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
                     await signInAnonymously(auth);
                 }
-            } catch (error) {
-                console.error("Auth error:", error);
-                els.loadingScreen.classList.add('hidden'); // Force hide if auth fails
-                alert("登入失敗，請重新整理網頁");
-            }
 
-            onAuthStateChanged(auth, (user) => {
-                state.user = user;
-                if (user) {
-                    setupDataListeners(user);
-                } else {
-                    // If for some reason user is null (unlikely after successful await)
-                    console.warn("User not logged in");
-                    els.loadingScreen.classList.add('hidden');
-                }
-            });
+                onAuthStateChanged(auth, (user) => {
+                    state.user = user;
+                    if (user) {
+                        setupDataListeners(user, db);
+                    } else {
+                        console.warn("User not logged in");
+                        els.loadingScreen.classList.add('hidden');
+                    }
+                });
+            } catch (error) {
+                console.error("Init Error:", error);
+                els.loadingIcon.classList.add('hidden');
+                els.loadingText.textContent = "初始化失敗 (請檢查 Console)";
+                els.errorHelp.innerHTML = `錯誤訊息: ${error.message}<br>請確認您已設定 Firebase Config 且網域已加入白名單。`;
+                els.errorHelp.classList.remove('hidden');
+            }
 
             setupEventListeners();
         }
 
-        // --- Data Listeners ---
-        function setupDataListeners(user) {
-            // Students Listener
+        function setupDataListeners(user, db) {
             const studentsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'students');
             onSnapshot(studentsRef, (snapshot) => {
                 const loadedStudents = snapshot.docs.map(doc => ({
@@ -231,58 +224,43 @@
                     ...doc.data()
                 }));
 
-                // Sort logic (Numeric then created time)
                 loadedStudents.sort((a, b) => {
                     const numA = parseInt(a.name.replace(/\D/g, '')) || 0;
                     const numB = parseInt(b.name.replace(/\D/g, '')) || 0;
-                    
-                    if (numA > 0 && numB > 0 && numA !== numB) {
-                        return numA - numB;
-                    }
+                    if (numA > 0 && numB > 0 && numA !== numB) return numA - numB;
                     return (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0);
                 });
 
                 state.students = loadedStudents;
                 render();
-                // Hide loading screen once initial data is loaded (or even if empty)
                 els.loadingScreen.classList.add('hidden');
             }, (error) => {
-                // Error Handler
-                console.error("Error fetching students:", error);
-                els.loadingText.textContent = "載入失敗";
-                setTimeout(() => {
-                    els.loadingScreen.classList.add('hidden');
-                }, 500);
+                console.error("Data Error:", error);
+                // 可能是權限不足或其他問題，隱藏 loading 避免卡死
+                els.loadingScreen.classList.add('hidden');
+                alert("讀取資料失敗，請確認網路連線");
             });
 
-            // Attendance Listener
             subscribeToAttendanceDate(state.date);
         }
 
         let unsubscribeAttendance = null;
         function subscribeToAttendanceDate(dateStr) {
             if (unsubscribeAttendance) unsubscribeAttendance();
-            if (!state.user) return;
+            if (!state.user || !state.db) return;
 
-            const dateDocRef = doc(db, 'artifacts', appId, 'users', state.user.uid, 'daily_attendance', dateStr);
+            const dateDocRef = doc(state.db, 'artifacts', appId, 'users', state.user.uid, 'daily_attendance', dateStr);
             unsubscribeAttendance = onSnapshot(dateDocRef, (docSnap) => {
-                if (docSnap.exists()) {
-                    state.attendance = docSnap.data().records || {};
-                } else {
-                    state.attendance = {};
-                }
+                state.attendance = docSnap.exists() ? docSnap.data().records || {} : {};
                 render();
-            }, (error) => {
-                console.error("Error fetching attendance:", error);
             });
         }
 
-        // --- Rendering ---
         function render() {
             renderStudentList();
             renderStats();
             updateUIState();
-            lucide.createIcons(); // Refresh icons for new elements
+            lucide.createIcons();
         }
 
         function updateUIState() {
@@ -318,7 +296,6 @@
             els.rateText.textContent = `${progress}%`;
             els.rateText.className = progress >= 80 ? 'text-green-600' : 'text-orange-500';
 
-            // Helper to create stat card HTML
             const createCard = (label, count, colorClass) => `
                 <div class="flex flex-col items-center justify-center p-3 rounded-lg ${colorClass}">
                     <span class="text-2xl font-bold">${count}</span>
@@ -336,7 +313,6 @@
         }
 
         function renderStudentList() {
-            // Clear existing list except empty state
             Array.from(els.studentList.children).forEach(child => {
                 if (child.id !== 'empty-state') child.remove();
             });
@@ -345,7 +321,6 @@
                 const status = state.attendance[student.id];
                 const row = document.createElement('div');
                 
-                // Determine Styles
                 let rowClass = 'bg-white border-slate-200';
                 let avatarClass = 'bg-slate-100 text-slate-500';
                 let statusText = '尚未點名';
@@ -356,15 +331,11 @@
                 else if (status === 'excused') { rowClass = 'bg-gray-100 border-gray-200'; avatarClass = 'bg-gray-200 text-gray-700'; statusText = '請假'; }
 
                 row.className = `group flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-xl border transition-all duration-200 shadow-sm ${rowClass}`;
-                
-                // Extract number or initial
                 const initial = student.name.replace(/[^0-9]/g, '') || student.name.charAt(0);
 
                 row.innerHTML = `
                     <div class="flex-1 min-w-0 flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold ${avatarClass}">
-                            ${initial}
-                        </div>
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold ${avatarClass}">${initial}</div>
                         <div class="min-w-0">
                             <h3 class="font-bold text-slate-800 truncate text-lg">${student.name}</h3>
                             <p class="text-xs text-slate-500 font-medium">${statusText}</p>
@@ -376,9 +347,7 @@
                         ${createStatusButton(student.id, 'late', 'clock', '遲到', status === 'late', 'text-orange-600 bg-orange-50 hover:bg-orange-100 border-orange-200', 'bg-orange-500 text-white border-orange-500 ring-2 ring-orange-200')}
                         ${createStatusButton(student.id, 'excused', 'minus-circle', '請假', status === 'excused', 'text-gray-600 bg-gray-50 hover:bg-gray-100 border-gray-200', 'bg-slate-500 text-white border-slate-500 ring-2 ring-gray-200')}
                         <div class="w-px h-8 bg-slate-300 mx-1 hidden sm:block"></div>
-                        <button onclick="app.deleteStudent('${student.id}')" class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors ml-auto sm:ml-0" title="刪除學生">
-                            <i data-lucide="trash-2" class="w-5 h-5"></i>
-                        </button>
+                        <button onclick="app.deleteStudent('${student.id}')" class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors ml-auto sm:ml-0" title="刪除學生"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
                     </div>
                 `;
                 els.studentList.appendChild(row);
@@ -387,167 +356,98 @@
 
         function createStatusButton(id, status, iconName, label, isActive, colorClass, activeClass) {
             const classes = isActive ? activeClass : `bg-white hover:shadow-sm ${colorClass}`;
-            return `
-                <button onclick="app.updateStatus('${id}', '${status}')" class="flex flex-col sm:flex-row items-center gap-1.5 px-3 py-2 rounded-lg border transition-all duration-200 flex-1 sm:flex-none justify-center min-w-[70px] sm:min-w-[auto] ${classes}">
-                    <i data-lucide="${iconName}" class="w-5 h-5 ${isActive ? 'text-white' : ''}"></i>
-                    <span class="text-xs sm:text-sm font-medium">${label}</span>
-                </button>
-            `;
+            return `<button onclick="app.updateStatus('${id}', '${status}')" class="flex flex-col sm:flex-row items-center gap-1.5 px-3 py-2 rounded-lg border transition-all duration-200 flex-1 sm:flex-none justify-center min-w-[70px] sm:min-w-[auto] ${classes}"><i data-lucide="${iconName}" class="w-5 h-5 ${isActive ? 'text-white' : ''}"></i><span class="text-xs sm:text-sm font-medium">${label}</span></button>`;
         }
-
-
-        // --- Actions & Handlers ---
 
         async function saveAttendance(newData) {
             if (!state.user) return;
-            const dateDocRef = doc(db, 'artifacts', appId, 'users', state.user.uid, 'daily_attendance', state.date);
+            const dateDocRef = doc(state.db, 'artifacts', appId, 'users', state.user.uid, 'daily_attendance', state.date);
             try {
                 await setDoc(dateDocRef, {
                     date: state.date,
                     records: newData,
                     lastUpdated: serverTimestamp()
                 }, { merge: true });
-            } catch (e) {
-                console.error("Save failed", e);
-            }
+            } catch (e) { console.error("Save failed", e); }
         }
 
-        // Exported actions for HTML onClick attributes
         window.app.updateStatus = async (studentId, status) => {
             const newData = { ...state.attendance, [studentId]: status };
-            // Optimistic update handled by listener usually, but for vanilla JS we rely on listener to re-render
-            // Or we can manually trigger render here for instant feedback if network is slow,
-            // but Firestore local cache is usually fast enough.
             await saveAttendance(newData);
         };
 
         window.app.deleteStudent = async (studentId) => {
              if (!confirm('確定要刪除這位學生嗎？這也會影響歷史紀錄。')) return;
              try {
-                 await deleteDoc(doc(db, 'artifacts', appId, 'users', state.user.uid, 'students', studentId));
+                 await deleteDoc(doc(state.db, 'artifacts', appId, 'users', state.user.uid, 'students', studentId));
                  const newData = { ...state.attendance };
                  delete newData[studentId];
                  await saveAttendance(newData);
-             } catch (e) {
-                 console.error("Delete failed", e);
-             }
+             } catch (e) { console.error("Delete failed", e); }
         };
 
         window.app.handleBulkStatus = async (status) => {
             if (!state.user || state.students.length === 0) return;
-            // No confirm as requested
             const newData = { ...state.attendance };
             state.students.forEach(s => newData[s.id] = status);
             await saveAttendance(newData);
         };
 
-        // --- Event Listeners ---
         function setupEventListeners() {
-            // Date Picker
             els.datePicker.addEventListener('change', (e) => {
                 state.date = e.target.value;
                 subscribeToAttendanceDate(state.date);
             });
-
-            // Input Validation
-            els.inputName.addEventListener('input', (e) => {
-                els.btnAdd.disabled = !e.target.value.trim();
-            });
-
-            // Add Student
+            els.inputName.addEventListener('input', (e) => els.btnAdd.disabled = !e.target.value.trim());
+            
             els.formAdd.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const name = els.inputName.value.trim();
                 if (!name || !state.user) return;
-
                 els.inputName.value = '';
                 els.btnAdd.disabled = true;
-
                 try {
-                    const newDocRef = doc(collection(db, 'artifacts', appId, 'users', state.user.uid, 'students'));
-                    await setDoc(newDocRef, {
-                        name: name,
-                        createdAt: serverTimestamp()
-                    });
-                } catch (err) {
-                    console.error("Add student failed", err);
-                    els.inputName.value = name; // revert
-                }
+                    const newDocRef = doc(collection(state.db, 'artifacts', appId, 'users', state.user.uid, 'students'));
+                    await setDoc(newDocRef, { name: name, createdAt: serverTimestamp() });
+                } catch (err) { els.inputName.value = name; }
             });
 
-            // Batch Add
             els.btnBatchAdd.addEventListener('click', async () => {
                  if (!state.user) return;
                  if (state.students.length > 0 && !confirm('目前已有學生名單，確定要額外加入 1號 到 30號 學生嗎？')) return;
-                 
                  state.isAddingBatch = true;
-                 updateUIState(); // show loading
-
+                 updateUIState();
                  try {
                      const promises = [];
                      for (let i = 1; i <= 30; i++) {
-                        const newDocRef = doc(collection(db, 'artifacts', appId, 'users', state.user.uid, 'students'));
-                        promises.push(setDoc(newDocRef, {
-                            name: `${i}號學生`,
-                            createdAt: serverTimestamp()
-                        }));
+                        const newDocRef = doc(collection(state.db, 'artifacts', appId, 'users', state.user.uid, 'students'));
+                        promises.push(setDoc(newDocRef, { name: `${i}號學生`, createdAt: serverTimestamp() }));
                     }
                     await Promise.all(promises);
-                 } catch (err) {
-                     alert("新增失敗");
-                 } finally {
-                     state.isAddingBatch = false;
-                     updateUIState();
-                 }
+                 } catch (err) { alert("新增失敗"); } finally { state.isAddingBatch = false; updateUIState(); }
             });
 
-            // Reset Day
             els.btnReset.addEventListener('click', async () => {
-                // No confirm
-                state.attendance = {}; // Optimistic
+                state.attendance = {};
                 render();
-                
                 if (!state.user) return;
                 try {
-                    const dateDocRef = doc(db, 'artifacts', appId, 'users', state.user.uid, 'daily_attendance', state.date);
+                    const dateDocRef = doc(state.db, 'artifacts', appId, 'users', state.user.uid, 'daily_attendance', state.date);
                     await deleteDoc(dateDocRef);
-                } catch(e) {
-                    console.error(e);
-                }
+                } catch(e) { console.error(e); }
             });
 
-            // Copy
             els.btnCopy.addEventListener('click', () => {
                 const stats = { present: 0, absent: 0, late: 0, excused: 0, totalMarked: 0 };
                 Object.values(state.attendance).forEach(status => {
-                    if (stats[status] !== undefined) {
-                        stats[status]++;
-                        stats.totalMarked++;
-                    }
+                    if (stats[status] !== undefined) { stats[status]++; stats.totalMarked++; }
                 });
-
-                const getNames = (status) => state.students
-                    .filter(s => state.attendance[s.id] === status)
-                    .map(s => s.name).join(', ');
-
-                const text = `
-📅 日期：${state.date}
-------------------
-📊 應到：${state.students.length} 人
-✅ 出席：${stats.present} 人
-❌ 缺席：${stats.absent} 人
-⚠️ 遲到：${stats.late} 人
-📝 請假：${stats.excused} 人
-❓ 未點：${state.students.length - stats.totalMarked} 人
-------------------
-${stats.absent > 0 ? `❌ 缺席名單：${getNames('absent')}\n` : ''}${stats.late > 0 ? `⚠️ 遲到名單：${getNames('late')}\n` : ''}${stats.excused > 0 ? `📝 請假名單：${getNames('excused')}` : ''}
-                `.trim();
-
+                const getNames = (status) => state.students.filter(s => state.attendance[s.id] === status).map(s => s.name).join(', ');
+                const text = `📅 日期：${state.date}\n------------------\n📊 應到：${state.students.length} 人\n✅ 出席：${stats.present} 人\n❌ 缺席：${stats.absent} 人\n⚠️ 遲到：${stats.late} 人\n📝 請假：${stats.excused} 人\n❓ 未點：${state.students.length - stats.totalMarked} 人\n------------------\n${stats.absent > 0 ? `❌ 缺席名單：${getNames('absent')}\n` : ''}${stats.late > 0 ? `⚠️ 遲到名單：${getNames('late')}\n` : ''}${stats.excused > 0 ? `📝 請假名單：${getNames('excused')}` : ''}`.trim();
                 fallbackCopyTextToClipboard(text);
             });
         }
 
-        // Fallback Copy
         function fallbackCopyTextToClipboard(text) {
             const textArea = document.createElement("textarea");
             textArea.value = text;
@@ -556,20 +456,15 @@ ${stats.absent > 0 ? `❌ 缺席名單：${getNames('absent')}\n` : ''}${stats.l
             document.body.appendChild(textArea);
             textArea.focus();
             textArea.select();
-
             try {
                 const successful = document.execCommand('copy');
                 if (successful) alert('點名摘要已複製到剪貼簿！');
                 else alert('複製失敗');
-            } catch (err) {
-                alert('複製功能受限，請手動複製');
-            }
+            } catch (err) { alert('複製功能受限，請手動複製'); }
             document.body.removeChild(textArea);
         }
 
-        // Start
         init();
-
     </script>
 </body>
 </html>
